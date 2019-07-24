@@ -253,7 +253,7 @@ fi
 export MATCHED_STR=`echo $SOFTWARE | grep -E '[a-zA-Z0-9\-\_\.*]+=[a-zA-Z0-9\-\_\.\*]+'`
 SOFTWARE_NAME=${SOFTWARE//=/-}
 CONDA_PREFIX=$(get_conda_path)
-PARENT_DIR=`dirname $CONDA_PREFIX`
+PARENT_DIR=`dirname $PWD`
 
 if [ ! -d "${PARENT_DIR}/share/modulefiles" ];then
 	mkdir -p ${PARENT_DIR}/share/modulefiles
