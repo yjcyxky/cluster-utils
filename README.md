@@ -12,13 +12,17 @@ The Choppy Cluster Utilities are the basic file, shell and text manipulation uti
 git clone https://github.com/go-choppy/cluster-utils
 ```
 
-2. Set PATH variable, e.g. cluster-utils in ~/softwares directory.
+2. Set PATH variable, **e.g. cluster-utils in ~/softwares directory**.
 ```
 echo "export PATH=~/softwares/cluster-utils/bin:$PATH" >> ~/.bashrc
 source ~/.bashrc
 ```
 
 3. Set MODULEPATH to ~/softwares/cluster-utils/share/modulefiles
+```
+echo "export MODULEPATH=~/softwares/cluster-utils/share/modulefiles:$MODULEPATH" >> ~/.bashrc
+source ~/.bashrc
+```
 
 4. Use cobweb to manage your softwares
 ```

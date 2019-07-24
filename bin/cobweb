@@ -222,8 +222,8 @@ done
 
 # 配置jq
 PWD=`dirname $0`
-LIB_PATH=${PWD}/lib
-MACHINE=${get_machine}
+LIB_PATH=`dirname ${PWD}`/lib
+MACHINE=$(get_machine)
 
 if [ "${MACHINE}" == "Linux" ];then
 	JQ_BIN=`${LIB_PATH}/jq-linux64`
