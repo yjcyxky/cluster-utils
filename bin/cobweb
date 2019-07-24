@@ -26,12 +26,12 @@ trap ctrl_c SIGINT
 
 # Get Conda path
 get_conda_path() {
-	local CONDA_PREFIX=`conda info --json | ${JQ_BIN} '.conda_prefix'`
-	if [ ! -d "$CONDA_PREFIX" ];then
-		CONDA_PREFIX=/opt/local/cobweb
+	local LOCAL_CONDA_PREFIX=`conda info --json | ${JQ_BIN} -r '.conda_prefix'`
+	if [ ! -d "$LOCAL_CONDA_PREFIX" ];then
+		LOCAL_CONDA_PREFIX=/opt/local/cobweb
 	fi
 	# Return Value
-	echo $CONDA_PREFIX
+	echo $LOCAL_CONDA_PREFIX
 }
 
 # 函数定义
@@ -226,9 +226,9 @@ LIB_PATH=`dirname ${PWD}`/lib
 MACHINE=$(get_machine)
 
 if [ "${MACHINE}" == "Linux" ];then
-	JQ_BIN=`${LIB_PATH}/jq-linux64`
+	JQ_BIN="${LIB_PATH}/jq-linux64"
 elif [ "${MACHINE}" == "Mac" ];then
-	JQ_BIN=`${LIB_PATH}/jq-osx-amd64`
+	JQ_BIN="${LIB_PATH}/jq-osx-amd64"
 fi
 
 # 识别是否安装jq
