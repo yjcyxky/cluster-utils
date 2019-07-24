@@ -1,0 +1,322 @@
+#!/bin/bash
+# -----------------------------------------------------------
+#  Copyright (C) 2017 The Genius Medicine Consortium(TGMC).
+#  Website: https://www.3steps.cn
+#
+#  Swarm platform is developed by the Nordata company.
+#  See the license for more details.
+#  Author: Jingcheng Yang <yjcyxky@163.com>
+
+set -eo pipefail
+
+# 常用变量定义
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+ERROR=false
+
+function ctrl_c() {
+	printf "$NC"
+	exit 1
+}
+
+# 捕获Ctrl + c
+trap ctrl_c SIGINT
+
+# Get Conda path
+get_conda_path() {
+	local CONDA_PREFIX=`conda info --json | ${JQ_BIN} '.conda_prefix'`
+	if [ ! -d "$CONDA_PREFIX" ];then
+		CONDA_PREFIX=/opt/local/cobweb
+	fi
+	# Return Value
+	echo $CONDA_PREFIX
+}
+
+# 函数定义
+install_software() {
+	local TEMP_SOFTWARE_NAME=$1
+	local TEMP_SOFTWARE=$2
+	local OUTPUT_JSON=`conda create --json -q -n ${TEMP_SOFTWARE_NAME} ${TEMP_SOFTWARE}`
+	local SUCCESS=`echo $OUTPUT_JSON | ${JQ_BIN} '.success'`
+	export ERROR_MSG=`echo $OUTPUT_JSON | ${JQ_BIN} '.exception_name'`
+	if [ "$SUCCESS" != 'true' ];then
+		export ERROR=true
+	else
+		export ERROR=false
+	fi
+}
+
+search_software() {
+	local TEMP_SOFTWARE_NAME=$1
+	local OUTPUT_JSON=`conda search ${TEMP_SOFTWARE_NAME} --json`
+	local ERROR=`echo $OUTPUT_JSON | ${JQ_BIN} -r 'has("error")'`
+    if [ "$ERROR" == 'true' ];then
+    	export ERROR=true
+		export ERROR_MSG=`echo $OUTPUT_JSON | ${JQ_BIN} '.exception_name'`
+	else
+		export ERROR=false
+		export SUCCESS_MSG=`echo $OUTPUT_JSON | ${JQ_BIN} -r '.[] | .[] | .name + "\t"  + .version'`
+	fi
+}
+
+gen_conda_modulefile() {
+	local TEMP_CONDA_PREFIX=$1
+	local TEMP_SOFTWARE_NAME=$2
+
+	cat <<- EOF > ${PARENT_DIR}/share/modulefiles/${TEMP_SOFTWARE_NAME}
+#%Module1.0
+module-whatis ""
+prepend-path PATH ${TEMP_CONDA_PREFIX}/envs/${TEMP_SOFTWARE_NAME}/bin
+prepend-path LD_LIBRARY_PATH ${TEMP_CONDA_PREFIX}/envs/${TEMP_SOFTWARE_NAME}/lib
+prepend-path MANPATH ${TEMP_CONDA_PREFIX}/envs/${TEMP_SOFTWARE_NAME}/man
+prepend-path INFOPATH ${TEMP_CONDA_PREFIX}/envs/${TEMP_SOFTWARE_NAME}/info
+prepend-path INCLUDEPATH ${TEMP_CONDA_PREFIX}/envs/${TEMP_SOFTWARE_NAME}/include
+EOF
+
+	printf "\n\n${GREEN}安装${TEMP_SOFTWARE_NAME}成功.${NC}\n"
+	printf "安装路径：${GREEN}${TEMP_CONDA_PREFIX}/envs/${TEMP_SOFTWARE_NAME}${NC}\n"
+	printf "使用方法：${GREEN}module load ${TEMP_SOFTWARE_NAME}${NC}\n"
+}
+
+gen_open_bin() {
+	local BIN_DIR=$1
+	local ENV_NAME=$2
+	cat <<- EOF > ${BIN_DIR}/alias-${ENV_NAME}
+#!/bin/bash
+# -----------------------------------------------------------
+#  Copyright (C) 2017 Choppy Team in The Genius Medicine Consortium(TGMC).
+#  Website: https://www.3steps.cn
+#
+#  Swarm platform is developed by the Nordata company.
+#  See the license for more details.
+#  Author: Jingcheng Yang <yjcyxky@163.com>
+
+set -eo pipefail
+
+alias open-${ENV_NAME}="source activate ${ENV_NAME}"
+EOF
+
+	chmod a+x ${BIN_DIR}/alias-${ENV_NAME}
+
+	cat <<- EOF
+
+You have two options, if you want to open ${ENV_NAME} evironment quicklly.
+1. You may need to add these lines into your ~/.bashrc:
+
+      source ${BIN_DIR}/alias-*
+
+   and then use open-${ENV_NAME} to activate the environment
+
+2. You can use environments-module.
+	module load ${ENV_NAME}
+
+EOF
+}
+
+gen_modulefile() {
+	local TEMP_CONDA_PREFIX=$1
+	local TEMP_SOFTWARE_NAME=$2
+
+	local TEMP_MODULEFILE=${PARENT_DIR}/share/modulefiles/${TEMP_SOFTWARE_NAME}
+	if [ -f "${TEMP_MODULEFILE}" ];then
+		printf "${RED}${TEMP_MODULEFILE}已经存在...${NC}\n"
+		exit 2
+	fi
+	cat <<- EOF > ${TEMP_MODULEFILE}
+#%Module1.0
+module-whatis ""
+prepend-path PATH ${PARENT_DIR}/softwares/${TEMP_SOFTWARE_NAME}/bin
+prepend-path LD_LIBRARY_PATH ${PARENT_DIR}/softwares/${TEMP_SOFTWARE_NAME}/lib
+prepend-path MANPATH ${PARENT_DIR}/softwares/${TEMP_SOFTWARE_NAME}/man
+prepend-path INFOPATH ${PARENT_DIR}/softwares/${TEMP_SOFTWARE_NAME}/info
+prepend-path INCLUDEPATH ${PARENT_DIR}/softwares/${TEMP_SOFTWARE_NAME}/include
+EOF
+
+	printf "\n\n${GREEN}安装${TEMP_SOFTWARE_NAME}成功.${NC}\n"
+	printf "安装路径：${GREEN}{$PARENT_DIR}/softwares/${TEMP_SOFTWARE_NAME}${NC}\n"
+	printf "使用方法：${GREEN}module load ${TEMP_SOFTWARE_NAME}${NC}\n"
+}
+
+show_error() {
+	printf "${RED}安装$software失败，详情请查看出错日志！${NC}\n"
+	printf "${RED}$ERROR_MSG${NC}\n"
+	exit 1
+}
+
+verify_again() {
+	# $1: 提示信息
+	# $2: 用户选择YES后打印信息
+	# $3: 用户选择YES后运行代码/函数
+	printf "$1?(yes|no): ${NC}"
+	read yesorno
+	case "$yesorno" in
+		[yY]|[Yy][eE][sS])
+			printf "$2\n";
+			shift; shift;
+			$@;
+			;;
+		[nN]|[Nn][oO])
+			exit 1
+			;;
+	esac
+}
+
+get_machine() {
+	unameOut="$(uname -s)"
+	case "${unameOut}" in
+		Linux*)     machine=Linux;;
+		Darwin*)    machine=Mac;;
+		CYGWIN*)    machine=Cygwin;;
+		MINGW*)     machine=MinGw;;
+		*)          machine="UNKNOWN:${unameOut}"
+	esac
+	echo ${machine}
+}
+
+show_help(){
+	cat << EOF
+usage: $(echo $0) [-m] [-S] [-d] [-s <software>]
+	-m 手动安装模式.
+	-d 删除指定软件.
+	-S 仅搜寻软件包.
+	-s 软件名，字符串必须为software_name=version形式.
+EOF
+}
+
+# 参数匹配
+while getopts ":hmdSs:" arg
+do
+	case "$arg" in
+		"m")
+			MODULEFILE="yes"
+			;;
+		"d")
+			DELETE="yes"
+			;;
+		"S")
+			SEARCH_MODE="yes"
+			;;
+		"s")
+			SOFTWARE="$OPTARG"
+			;;
+		"?")
+			echo "Unkown option: $OPTARG"
+			exit 1
+			;;
+		":")
+			echo "No argument value for option $OPTARG"
+			;;
+		h)
+			show_help
+			exit 0
+			;;
+		*)
+			echo "Unknown error while processing options"
+			show_help
+			exit 1
+			;;
+	esac
+done
+
+# 配置jq
+PWD=`dirname $0`
+LIB_PATH=${PWD}/lib
+MACHINE=${get_machine}
+
+if [ "${MACHINE}" == "Linux" ];then
+	JQ_BIN=`${LIB_PATH}/jq-linux64`
+elif [ "${MACHINE}" == "Mac" ];then
+	JQ_BIN=`${LIB_PATH}/jq-osx-amd64`
+fi
+
+# 识别是否安装jq
+if [ ! -f "$JQ_BIN" ];then
+	if [ -z "$(type jq 2>/dev/null)" ];then
+		echo "依赖jq，但未安装，请执行'yum install jq'安装此依赖软件."; exit 1;
+	else
+		JQ_BIN=`which jq`
+	fi
+fi
+
+# 识别是否安装conda
+type conda >/dev/null 2>&1 || { echo >&2 "依赖conda，但未安装，请安装此依赖软件."; exit 1; }
+
+# -s参数不能为空
+if [ -z "${SOFTWARE}" ];then
+	printf "${RED}必须指定-s参数，且值必须是software_name=version形式.${NC}\n"
+	exit 1
+fi
+
+# 匹配输入模式
+export MATCHED_STR=`echo $SOFTWARE | grep -E '[a-zA-Z0-9\-\_\.*]+=[a-zA-Z0-9\-\_\.\*]+'`
+SOFTWARE_NAME=${SOFTWARE//=/-}
+CONDA_PREFIX=$(get_conda_path)
+PARENT_DIR=`dirname $CONDA_PREFIX`
+
+if [ ! -d "${PARENT_DIR}/share/modulefiles" ];then
+	mkdir -p ${PARENT_DIR}/share/modulefiles
+fi
+
+# 检测MODULEPATH变量
+if [ -z "$MODULEPATH" ];then
+	echo "You need to set MODULEPATH variable. e.g. export MODULEPATH=${PARENT_DIR}/share/modulefiles"
+	exit 1
+fi
+
+if [ "${SOFTWARE_NAME}" == "${SOFTWARE}" ] || [ -z ${MATCHED_STR} ]; then
+	printf "${RED}-s参数的值必须是software_name=version形式.${NC}\n"
+	exit 1
+fi
+
+# 卸载模式
+if [ ! -z "$DELETE" ] && [ ! -z "$MODULEFILE" ];then
+	verify_again "${RED}卸载软件${SOFTWARE_NAME}" "" ""
+	rm -rf ${PARENT_DIR}/softwares/${SOFTWARE_NAME} 2> /dev/null
+	rm -f ${PARENT_DIR}/share/modulefiles/${SOFTWARE_NAME} 2> /dev/null
+	rm -f ${PWD}/alias-${SOFTWARE_NAME} 2> /dev/null
+	exit 0
+elif [ ! -z "$DELETE" ] && [ -z "$MODULEFILE" ];then
+	verify_again "${RED}卸载软件${SOFTWARE_NAME}" "" ""
+	rm -rf ${CONDA_PREFIX}/envs/${SOFTWARE_NAME} 2> /dev/null
+	rm -f ${PARENT_DIR}/share/modulefiles/${SOFTWARE_NAME} 2> /dev/null
+	exit 0
+fi
+
+# 搜索模式
+if [ ! -z "$SEARCH_MODE" ];then
+	SOFTWARE_NAME=`echo ${SOFTWARE_NAME} | sed 's/-\*//g'`
+	printf "${GREEN}搜索${SOFTWARE_NAME}...\n${NC}"
+	printf "${YELLOW}"
+	search_software ${SOFTWARE_NAME}
+	if $ERROR; then
+		printf "${RED}$ERROR_MSG${NC}\n"
+	else
+		printf "${GREEN}$SUCCESS_MSG${NC}\n"
+	fi
+	exit 2
+fi
+
+# 安装模式
+if [ -z "$MODULEFILE" ];then
+	printf "${GREEN}All softwares will be installed into $CONDA_PREFIX/envs.${NC}\n"
+	SOFTWARE_PATH=${CONDA_PREFIX}/envs/${SOFTWARE_NAME}
+	if [ -d "$SOFTWARE_PATH" ];then
+		printf "${RED}${SOFTWARE_PATH}已经存在，请删除后重试...${NC}\n"
+		exit 3
+	fi
+
+	verify_again "${GREEN}安装软件${SOFTWARE_NAME}" "${GREEN}正在安装... ...$NC" install_software ${SOFTWARE_NAME} ${SOFTWARE}
+
+	if $ERROR; then
+		show_error;
+	else
+		gen_conda_modulefile ${CONDA_PREFIX} ${SOFTWARE_NAME};
+		gen_open_bin ${PWD} ${SOFTWARE_NAME}
+	fi
+elif [ ! -z "$MODULEFILE" ];then
+	# 提示用户输入Yes或者No，以便继续运算或者结束
+	printf "${GREEN}当前软件为手动安装，安装路径: ${PARENT_DIR}/softwares/${SOFTWARE_NAME}\n${NC}"
+	verify_again "${GREEN}生成modulefile：软件${SOFTWARE_NAME}" "" gen_modulefile ${CONDA_PREFIX} ${SOFTWARE_NAME}
+fi
