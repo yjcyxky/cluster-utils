@@ -160,6 +160,9 @@ verify_again() {
 		[nN]|[Nn][oO])
 			exit 1
 			;;
+		*)
+			verify_again
+			;;
 	esac
 }
 
