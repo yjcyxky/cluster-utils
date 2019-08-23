@@ -114,6 +114,14 @@ You have two options, if you want to open ${ENV_NAME} evironment quicklly.
 2. You can use environments-module.
 	module load ${ENV_NAME}
 
+FAQ:
+1. If you encounter the following error when you use `module unload XXX`:
+	
+		init.c(556):ERROR:161: Cannot initialize TCL
+
+	Please execute the following command:
+		chown none:none `which modulecmd` && chmod ug+s `which modulecmd`
+
 EOF
 }
 
