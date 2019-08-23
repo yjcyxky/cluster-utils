@@ -69,7 +69,9 @@ gen_conda_modulefile() {
 #%Module1.0
 module-whatis ""
 prepend-path PATH ${TEMP_CONDA_PREFIX}/envs/${TEMP_SOFTWARE_NAME}/bin
+prepend-path PATH ${TEMP_CONDA_PREFIX}/bin
 prepend-path LD_LIBRARY_PATH ${TEMP_CONDA_PREFIX}/envs/${TEMP_SOFTWARE_NAME}/lib
+prepend-path LD_LIBRARY_PATH ${TEMP_CONDA_PREFIX}/lib
 prepend-path MANPATH ${TEMP_CONDA_PREFIX}/envs/${TEMP_SOFTWARE_NAME}/man
 prepend-path INFOPATH ${TEMP_CONDA_PREFIX}/envs/${TEMP_SOFTWARE_NAME}/info
 prepend-path INCLUDEPATH ${TEMP_CONDA_PREFIX}/envs/${TEMP_SOFTWARE_NAME}/include
