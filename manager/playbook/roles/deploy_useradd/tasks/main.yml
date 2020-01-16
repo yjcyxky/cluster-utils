@@ -1,0 +1,35 @@
+- name: Add the group {{ username }}.
+  group:
+    name: "{{ username }}"
+    state: present
+  become: yes
+
+- name: Add the user {{ username }}.
+  user:
+    name: "{{ username }}"
+    shell: /bin/bash
+    group: "{{ username }}"
+    password: "{{ password | password_hash('sha512', 'mysecretsalt') }}"
+    home: "{{ home }}"
+  become: yes
+
+- name: Create a 2048-bit SSH key for the user.
+  user:
+    name: "{{ username }}"
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+    ssh_key_file: ".ssh/id_rsa"
+  become: yes
+    
+- name: Check if yp server exists
+  stat: 
+    path: /var/yp/Makefile
+  register: ypserver_exists
+
+- name: Sync {{ username }} to yp server.
+  shell: cd /var/yp && make
+  when: ypserver_exists.stat.exists == true
+  become: yes
+
+- debug: msg="Yp server doesn't exist. You may need to install yp server firstly."
+  when: ypserver_exists.stat.exists == false

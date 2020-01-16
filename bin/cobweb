@@ -120,7 +120,7 @@ FAQ:
 		init.c(556):ERROR:161: Cannot initialize TCL
 
 	Please execute the following command:
-		chown none:none `which modulecmd` && chmod ug+s `which modulecmd`
+		chown nobody:nobody `which modulecmd` && chmod ug+s `which modulecmd`
 
 EOF
 }

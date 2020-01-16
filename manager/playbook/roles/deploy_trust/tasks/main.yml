@@ -1,0 +1,4 @@
+- name: Set authorized key for user {{ username }} copying it to compute node
+  authorized_key:
+    user: "{{ username }}"
+    key: "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/id_rsa.pub') }}"

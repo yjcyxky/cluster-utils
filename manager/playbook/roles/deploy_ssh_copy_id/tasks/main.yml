@@ -1,0 +1,16 @@
+---
+# tasks file for ansible-ssh-copy-id
+
+- name: Account $HOME
+  shell: "echo $HOME"
+  register: account_homedir
+  changed_when: false
+  check_mode: no
+
+- name: Inject SSH public key into remote system
+  ssh_copy_id:
+    hostname: "{{ hostname }}"
+    username: "{{ username }}"
+    password: "{{ password }}"
+    ssh_public_key: "{{ account_homedir.stdout + ssh_public_key }}"
+    ssh_port: "{{ ssh_port }}"

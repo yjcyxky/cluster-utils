@@ -1,0 +1,8 @@
+[managers]
+{#增加-可以控制去除空白行-#}
+{{ manager.node_name }} ansible_ssh_host={{ manager.ip }} ansible_ssh_port={{ manager.port }} ansible_ssh_user={{ manager.user }}
+
+[nodes]
+{% for node in nodes -%}
+{{ node.node_name }} ansible_ssh_host={{ node.ip_addr }} ansible_ssh_port={{ node.port }} ansible_ssh_user={{ node.user }}
+{% endfor %}

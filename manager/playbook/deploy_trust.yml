@@ -1,0 +1,36 @@
+---
+# Ansible playbook to deploy trust - main.yml
+#
+# Copyright (C) 2016-2020 Jingcheng Yang <yjcyxky@163.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License,
+# Version 2.1 only as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+
+- name: Set authorized key to compute node
+  hosts: nodes
+  user: "{{ username }}"
+  vars:
+    username: "{{ username }}"
+    ssh_port: "{{ ssh_port }}"
+    management_console: "{{ management_console }}"
+  roles:
+    - role: 'deploy_trust'
+
+- name: Set authorized key from compute node
+  hosts: nodes
+  user: "{{ username }}"
+  vars:
+    username: "{{ username }}"
+    ssh_port: "{{ ssh_port }}"
+    hostname: "{{ management_console }}"
+    password: "{{ password }}"
+    ssh_public_key: "/.ssh/id_rsa.pub"
+  roles:
+    - role: 'deploy_ssh_copy_id'

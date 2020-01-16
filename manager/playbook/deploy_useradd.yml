@@ -1,0 +1,23 @@
+---
+# Ansible playbook to add user - main.yml
+#
+# Copyright (C) 2016-2020 Jingcheng Yang <yjcyxky@163.com>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License,
+# Version 2.1 only as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+
+- name: Add an account for managers
+  hosts: managers
+  vars:
+    username: "{{ username }}"
+    password: "{{ password }}"
+    home: "{{ home }}"
+  roles:
+    - role: 'deploy_useradd'
