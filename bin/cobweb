@@ -26,9 +26,16 @@ trap ctrl_c SIGINT
 
 # Get Conda path
 get_conda_path() {
-	local LOCAL_CONDA_PREFIX=`conda info --json | ${JQ_BIN} -r '.conda_prefix'`
+	if [ -f "~/.conda_prefix" ];then
+		local LOCAL_CONDA_PREFIX=`cat ~/.conda_prefix`
+	else
+		local LOCAL_CONDA_PREFIX=`${CONDA_BIN} info --json | ${JQ_BIN} -r '.conda_prefix'`
+	fi
+
 	if [ ! -d "$LOCAL_CONDA_PREFIX" ];then
 		LOCAL_CONDA_PREFIX=/opt/local/cobweb
+	else
+		print "$LOCAL_CONDA_PREFIX" > ~/.conda_prefix
 	fi
 	# Return Value
 	echo $LOCAL_CONDA_PREFIX
@@ -38,7 +45,7 @@ get_conda_path() {
 install_software() {
 	local TEMP_SOFTWARE_NAME=$1
 	local TEMP_SOFTWARE=$2
-	local OUTPUT_JSON=`conda create --json -q -n ${TEMP_SOFTWARE_NAME} ${TEMP_SOFTWARE}`
+	local OUTPUT_JSON=`${CONDA_BIN} create --json -q -n ${TEMP_SOFTWARE_NAME} ${TEMP_SOFTWARE}`
 	local SUCCESS=`echo $OUTPUT_JSON | ${JQ_BIN} '.success'`
 	export ERROR_MSG=`echo $OUTPUT_JSON | ${JQ_BIN} '.exception_name'`
 	if [ "$SUCCESS" != 'true' ];then
@@ -50,7 +57,7 @@ install_software() {
 
 search_software() {
 	local TEMP_SOFTWARE_NAME=$1
-	local OUTPUT_JSON=`conda search ${TEMP_SOFTWARE_NAME} --json`
+	local OUTPUT_JSON=`${CONDA_BIN} search ${TEMP_SOFTWARE_NAME} --json`
 	local ERROR=`echo $OUTPUT_JSON | ${JQ_BIN} -r 'has("error")'`
     if [ "$ERROR" == 'true' ];then
     	export ERROR=true
@@ -255,6 +262,11 @@ fi
 
 # 识别是否安装conda
 type conda >/dev/null 2>&1 || { echo >&2 "依赖conda，但未安装，请安装此依赖软件."; exit 1; }
+CONDA_BIN=`which mamba`
+
+if [ "$CONDA_BIN" = "mamba not found" ];then
+	CONDA_BIN=conda
+fi
 
 # -s参数不能为空
 if [ -z "${SOFTWARE}" ];then
