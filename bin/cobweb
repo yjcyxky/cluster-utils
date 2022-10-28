@@ -26,8 +26,8 @@ trap ctrl_c SIGINT
 
 # Get Conda path
 get_conda_path() {
-	if [ -f "~/.conda_prefix" ];then
-		local LOCAL_CONDA_PREFIX=`cat ~/.conda_prefix`
+	if [ -f "${HOME}/.conda_prefix" ];then
+		local LOCAL_CONDA_PREFIX=`cat ${HOME}/.conda_prefix`
 	else
 		local LOCAL_CONDA_PREFIX=`${CONDA_BIN} info --json | ${JQ_BIN} -r '.conda_prefix'`
 	fi
@@ -35,7 +35,7 @@ get_conda_path() {
 	if [ ! -d "$LOCAL_CONDA_PREFIX" ];then
 		LOCAL_CONDA_PREFIX=/opt/local/cobweb
 	else
-		print "$LOCAL_CONDA_PREFIX" > ~/.conda_prefix
+		printf "$LOCAL_CONDA_PREFIX" > "${HOME}/.conda_prefix"
 	fi
 	# Return Value
 	echo $LOCAL_CONDA_PREFIX
