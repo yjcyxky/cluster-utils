@@ -35,7 +35,7 @@ get_conda_path() {
 	if [ ! -d "$LOCAL_CONDA_PREFIX" ];then
 		LOCAL_CONDA_PREFIX=/opt/local/cobweb
 	else
-		printf "$LOCAL_CONDA_PREFIX" > "${HOME}/.conda_prefix"
+		printf "$LOCAL_CONDA_PREFIX" > ${HOME}/.conda_prefix
 	fi
 	# Return Value
 	echo $LOCAL_CONDA_PREFIX
@@ -45,10 +45,10 @@ get_conda_path() {
 install_software() {
 	local TEMP_SOFTWARE_NAME=$1
 	local TEMP_SOFTWARE=$2
-	local OUTPUT_JSON=`${CONDA_BIN} create --json -q -n ${TEMP_SOFTWARE_NAME} ${TEMP_SOFTWARE}`
-	local SUCCESS=`echo $OUTPUT_JSON | ${JQ_BIN} '.success'`
-	export ERROR_MSG=`echo $OUTPUT_JSON | ${JQ_BIN} '.exception_name'`
-	if [ "$SUCCESS" != 'true' ];then
+	local OUTPUT_JSON=`${CONDA_BIN} create --json ${SHOW_PROCESS} -n ${TEMP_SOFTWARE_NAME} ${TEMP_SOFTWARE}`
+	local SUCCESS=`echo $OUTPUT_JSON | grep '"success": true'`
+	export ERROR_MSG=`echo $OUTPUT_JSON | grep 'exception_name'`
+	if [ -z "$SUCCESS" ];then
 		export ERROR=true
 	else
 		export ERROR=false
@@ -110,7 +110,7 @@ EOF
 	cat <<- EOF
 
 You have two options, if you want to open ${ENV_NAME} evironment quicklly.
-1. You may need to add these lines into your ~/.bashrc:
+1. You may need to add these lines into your ${HOME}/.bashrc:
 
       source ${BIN_DIR}/alias-*
 
@@ -120,7 +120,7 @@ You have two options, if you want to open ${ENV_NAME} evironment quicklly.
 	module load ${ENV_NAME}
 
 FAQ:
-1. If you encounter the following error when you use `module unload XXX`:
+1. If you encounter the following error when you use module unload XXX:
 	
 		init.c(556):ERROR:161: Cannot initialize TCL
 
@@ -195,16 +195,17 @@ get_machine() {
 
 show_help(){
 	cat << EOF
-usage: $(echo $0) [-m] [-S] [-d] [-s <software>]
+usage: $(echo $0) [-m] [-S] [-d] [-p] [-s <software>]
 	-m 手动安装模式.
 	-d 删除指定软件.
 	-S 仅搜寻软件包.
+	-p 显示进度.
 	-s 软件名，字符串必须为software_name=version形式.
 EOF
 }
 
 # 参数匹配
-while getopts ":hmdSs:" arg
+while getopts ":hmdpSs:" arg
 do
 	case "$arg" in
 		"m")
@@ -212,6 +213,9 @@ do
 			;;
 		"d")
 			DELETE="yes"
+			;;
+		"p")
+		    SHOW_PROCESS="-v"
 			;;
 		"S")
 			SEARCH_MODE="yes"
